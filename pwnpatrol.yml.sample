@@ -1,0 +1,11 @@
+
+host:  0.0.0.0
+port: 8008
+logLevel: INFO
+
+
+# The passwords list file downloaded from  https://haveibeenpwned.com/Passwords
+dumpFile: /tmp/pwned-passwords-ordered-by-hash.txt
+
+# The location for your database file.
+dbFile: /opt/pwnpatrol.db
