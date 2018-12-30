@@ -1,21 +1,19 @@
 package pwnpatrolmain
 
 import (
+	"encoding/hex"
 	"bufio"
 	"os"
 	"strings"
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/spf13/viper"
 )
 
 var DB *sql.DB
 
-func ConnectDB() {
+func ConnectDB(dbFile string) {
 	// Connect to the sqlite DB file
-	dbFile := viper.GetString("dbFile")
-
 	logger.Info("Connecting to database file: ", dbFile)
 	var err error
 
@@ -26,15 +24,13 @@ func ConnectDB() {
 
 }
 
-func InitDB() {
-	logger.Info("Initializing database file")
-	return
+func InitDB(dumpFile string) {
+
+	logger.Infof("Initializing database")
 
 	sqlStmt := `
     DROP TABLE IF EXISTS pwned;
-    CREATE TABLE pwned (prefix text, suffix text, occurrences integer);
-    CREATE INDEX pwned_prefix_idx on pwned (prefix);
-
+    CREATE TABLE pwned (prefix text, hash blob, occurrences integer);
     `
 	_, err := DB.Exec(sqlStmt)
 	if err != nil {
@@ -47,17 +43,18 @@ func InitDB() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	logger.Infof("Loading data from dump file at %s", dumpFile)
 
-	dumpfile, err := os.Open(viper.GetString("dumpFile"))
+	fd, err := os.Open(dumpFile)
 	if err != nil {
 		logger.Fatal(err)
 		return
 	}
-	defer dumpfile.Close()
+	defer fd.Close()
 
-	scanner := bufio.NewScanner(dumpfile)
+	scanner := bufio.NewScanner(fd)
 
-	stmt, err := tx.Prepare("INSERT INTO pwned(prefix, suffix, occurrences) VALUES (?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO pwned(prefix, hash, occurrences) VALUES (?, ?, ?)")
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -74,7 +71,12 @@ func InitDB() {
 
 		tokens := strings.Split(line, ":")
 
-		_, err = stmt.Exec(tokens[0][:5], tokens[0][5:], tokens[1])
+		occurrences := tokens[1]
+
+		hash, err := hex.DecodeString(tokens[0])
+
+
+		_, err = stmt.Exec(tokens[0][:5], hash, occurrences)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -88,6 +90,16 @@ func InitDB() {
 
 	// Commit the transaction
 	tx.Commit()
+
+	// Index and vacuum the DB
+	logger.Info("Indexing...")
+
+	_, err = DB.Exec("CREATE INDEX pwned_prefix_idx on pwned (prefix);")
+	if err != nil {
+		logger.Errorf("%q: %s\n", err)
+		return
+	}
+
 
 	logger.Info("Done.")
 

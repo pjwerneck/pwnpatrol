@@ -33,7 +33,7 @@ func RangeHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 
 	// Query the prefix
 	logger.Debug("Querying prefix:", prefix)
-	rows, err := DB.Query("SELECT suffix, occurrences FROM pwned WHERE prefix = ?", prefix)
+	rows, err := DB.Query("SELECT hex(hash), occurrences FROM pwned WHERE prefix = ?", prefix)
 	if err != nil {
 		logger.Fatal("invalid query: ", err)
 	}
@@ -42,14 +42,14 @@ func RangeHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) 
 	// Return all suffixes. If we got here, there should never be an
 	// empty response.
 	for rows.Next() {
-		var suffix string
+		var hash string
 		var occurrences int
 
-		err = rows.Scan(&suffix, &occurrences)
+		err = rows.Scan(&hash, &occurrences)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		fmt.Fprintf(w, "%s:%d\n", suffix, occurrences)
+		fmt.Fprintf(w, "%s:%d\n", hash[5:], occurrences)
 
 	}
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/pjwerneck/pwnpatrol/pwnpatrolmain"
 	"github.com/spf13/cobra"
 )
@@ -14,12 +13,14 @@ var initdbCmd = &cobra.Command{
 
     `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("initdb called")
-		pwnpatrolmain.InitDB()
+		pwnpatrolmain.InitDB(dumpFile)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(initdbCmd)
+
+	initdbCmd.Flags().StringVarP(&dumpFile, "dumpfile", "d", "", "passwords list file")
+	initdbCmd.MarkFlagRequired("dumpfile")
 
 }
